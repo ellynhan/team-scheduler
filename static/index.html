@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일정 스케줄러</title>
+    <script> (function () { var path = window.location.pathname; var base = path.replace(/\/meeting\/[^/]+$/, '').replace(/\/$/, '') + '/'; var el = document.createElement('base'); el.href = base; document.head.appendChild(el); })(); </script>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <h1>📅 일정 스케줄러</h1>
+            <p class="subtitle">팀 일정 가능 시간을 쉽게 조율하세요</p>
+        </header>
+        <section id="create-section" class="card">
+            <h2>새 일정 만들기</h2>
+            <form id="create-form">
+                <div class="form-group"> <label for="title">일정 제목</label> <input type="text" id="title"
+                        placeholder="예: 4월 정기 일정" required> </div>
+                <div class="form-row">
+                    <div class="form-group"> <label for="date-from">시작 날짜</label> <input type="date" id="date-from"
+                            required> </div>
+                    <div class="form-group"> <label for="date-to">종료 날짜</label> <input type="date" id="date-to"
+                            required> </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"> <label for="time-from">시작 시간</label> <select id="time-from"></select>
+                    </div>
+                    <div class="form-group"> <label for="time-to">종료 시간</label> <select id="time-to"></select> </div>
+                </div>
+                <div class="member-mode-tabs"> <button type="button" class="member-mode-tab active" data-mode="count">인원
+                        수만 설정</button> <button type="button" class="member-mode-tab" data-mode="names">참가자 이름으로
+                        생성</button> </div>
+                <div id="mode-count" class="member-mode-content">
+                    <div class="form-group"> <label for="member-count">참여 인원 수</label> <input type="number"
+                            id="member-count" min="2" max="20" value="6"> </div>
+                </div>
+                <div id="mode-names" class="member-mode-content" style="display:none;">
+                    <div class="form-group"> <label>그룹 프리셋</label>
+                        <div class="group-combo-wrap">
+                            <div class="group-combo-input-row">
+                                <div class="group-combo-field"> <input type="text" id="group-search"
+                                        placeholder="그룹 선택 또는 검색..." autocomplete="off"> <span
+                                        class="group-combo-arrow">&#9662;</span> </div> <button type="button"
+                                    id="manage-groups-btn" class="btn-secondary btn-sm">그룹 관리</button>
+                            </div>
+                            <div id="group-search-results" class="group-search-dropdown"></div>
+                            <div id="selected-group-display" class="selected-group-tag" style="display:none;"> <span
+                                    id="selected-group-name"></span> <button type="button" id="clear-group-btn"
+                                    class="btn-tag-remove">x</button> </div>
+                        </div>
+                    </div>
+                    <div class="form-group"> <label for="preset-members">참가자 이름 (쉼표로 구분)</label> <input type="text"
+                            id="preset-members" placeholder="예: 김철수, 이영희, 박민수">
+                        <div class="form-hint">참가자가 이름 버튼으로 응답합니다. 인원 수는 자동 설정됩니다.</div>
+                    </div>
+                </div> <button type="button" id="toggle-detail-btn" class="btn-toggle-detail">+ 상세 정보 추가</button>
+                <div id="detail-fields" style="display:none;">
+                    <div class="form-group"> <label for="meeting-location">장소</label> <input type="text"
+                            id="meeting-location" placeholder="예: 3층 회의실 A"> </div>
+                    <div class="form-group"> <label for="meeting-note">비고</label> <textarea id="meeting-note"
+                            placeholder="추가 안내사항" rows="2"></textarea> </div>
+                </div> <button type="submit" class="btn-primary">일정 생성</button>
+            </form>
+        </section>
+        <section id="group-manage-section" class="card" style="display:none;">
+            <div class="meeting-top-bar">
+                <h2>그룹 관리</h2> <button id="close-groups-btn" class="btn-back">닫기</button>
+            </div>
+            <div id="group-form" class="group-form"> <input type="text" id="group-name" placeholder="그룹 이름"> <input
+                    type="text" id="group-members-input" placeholder="멤버 (쉼표로 구분)"> <input type="password"
+                    id="group-password" placeholder="비밀번호 (숫자 4~8자리)" maxlength="8" inputmode="numeric">
+                <div class="group-form-actions"> <button id="save-group-btn" class="btn-primary btn-sm">저장</button>
+                    <button id="cancel-group-btn" class="btn-secondary btn-sm" style="display:none;">취소</button> </div>
+            </div>
+            <div class="form-group"> <input type="text" id="group-list-search" placeholder="그룹/멤버 검색..."
+                    class="group-search-input"> </div>
+            <div id="group-list"></div>
+        </section>
+        <section id="meeting-list-section" class="card">
+            <h2>일정 목록</h2>
+            <div class="meeting-filter-wrap">
+                <div class="meeting-filter-field"> <input type="text" id="meeting-group-filter"
+                        placeholder="그룹 선택 또는 검색..." autocomplete="off"> <span class="group-combo-arrow">&#9662;</span>
+                </div>
+                <div id="meeting-group-filter-results" class="group-search-dropdown"></div>
+                <div id="meeting-filter-tag" class="selected-group-tag" style="display:none;"> <span
+                        id="meeting-filter-tag-name"></span> <button type="button" id="clear-meeting-filter"
+                        class="btn-tag-remove">x</button> </div>
+            </div>
+            <div id="meeting-list-loading">불러오는 중...</div>
+            <div id="upcoming-meetings"></div>
+            <div id="past-meetings"></div>
+        </section>
+        <section id="meeting-section" class="card" style="display:none;">
+            <div class="meeting-top-bar"> <button id="back-btn" class="btn-back">&lt; 메인으로</button> <button
+                    id="delete-meeting-btn" class="btn-delete">일정 삭제</button> </div>
+            <div id="meeting-header">
+                <h2 id="meeting-title"></h2>
+                <div id="meeting-info"></div>
+                <div id="share-box"> <label>공유 링크</label>
+                    <div class="share-row"> <input type="text" id="share-link" readonly> <button id="copy-btn"
+                            class="btn-secondary">복사</button> </div>
+                </div>
+            </div>
+            <div id="name-input-area">
+                <div id="name-text-input" class="form-group"> <label for="member-name">이름 입력</label> <input type="text"
+                        id="member-name" placeholder="이름을 입력하세요"> </div>
+                <div id="name-buttons-area" style="display:none;"> <label class="form-group-label">참가자 선택</label>
+                    <div id="name-buttons"></div>
+                </div>
+            </div>
+            <div id="calendar-area">
+                <div class="calendar-nav"> <button id="prev-month" class="btn-icon">&lt;</button> <span
+                        id="calendar-month-label"></span> <button id="next-month" class="btn-icon">&gt;</button> </div>
+                <div id="calendar-grid"></div>
+            </div>
+            <div id="time-selection-area" style="display:none;">
+                <h3 id="selected-date-label"></h3>
+                <div id="time-bar-container"></div>
+                <div class="time-actions"> <button id="select-all-times" class="btn-secondary btn-sm">전체 선택</button>
+                    <button id="clear-times" class="btn-secondary btn-sm">선택 초기화</button> </div>
+            </div>
+            <div id="submit-area"> <button id="submit-btn" class="btn-primary">가능 시간 제출</button> </div>
+            <div id="results-area" style="display:none;">
+                <div class="results-header">
+                    <h2>결과</h2> <button id="share-results-btn" class="btn-secondary btn-sm">결과 공유</button>
+                </div>
+                <div id="members-list"></div>
+                <div id="results-banner"></div>
+                <div id="results-tabs"> <button class="result-tab active" data-tab="common">전체 공통시간</button> <button
+                        class="result-tab" data-tab="candidates">후보 시간대</button> <button class="result-tab"
+                        data-tab="individual">개인별 응답</button> </div>
+                <div id="tab-common" class="tab-content"></div>
+                <div id="tab-candidates" class="tab-content" style="display:none;"></div>
+                <div id="tab-individual" class="tab-content" style="display:none;"></div>
+            </div>
+        </section>
+    </div>
+    <script type="module" src="static/js/app.js"></script>
+</body>
+
+</html>
