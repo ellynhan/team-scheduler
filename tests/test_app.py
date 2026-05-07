@@ -48,9 +48,13 @@ def _create_meeting(client, **kwargs):
 
 def _create_group(client, name="팀A", members=None, password="1234"):
     members = members or ["홍길동", "김철수"]
+    before = {g["id"] for g in client.get("/api/groups").json()}
     resp = client.post("/api/groups", json={"name": name, "members": members, "password": password})
     assert resp.status_code == 200
-    return client.get("/api/groups").json()[0]["id"]
+    after = client.get("/api/groups").json()
+    new = [g for g in after if g["id"] not in before]
+    assert len(new) == 1, "그룹이 정확히 1개 생성되어야 한다"
+    return new[0]["id"]
 
 
 # ─── DB 레이어 ─────────────────────────────────────────────────────────────────
@@ -221,6 +225,9 @@ class TestCreateMeeting:
             "members": [" ", "  "], "member_count": 3,
         })
         assert resp.status_code == 200
+        mid = resp.json()["id"]
+        data = client.get(f"/api/meetings/{mid}").json()
+        assert data["member_count"] == 3
 
     def test_member_count_too_low(self, client):
         resp = client.post("/api/meetings", json={
@@ -265,6 +272,18 @@ class TestDeleteMeeting:
         resp = client.delete(f"/api/meetings/{mid}")
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
+        assert client.get(f"/api/meetings/{mid}").status_code == 404
+
+    def test_cascades_availabilities(self, client):
+        mid = _create_meeting(client)
+        client.post(f"/api/meetings/{mid}/availability", json={
+            "member_name": "Alice", "slots": {"2025-01-06": [9.0]},
+        })
+        client.delete(f"/api/meetings/{mid}")
+        rows = app_module.db_fetchall(
+            "SELECT id FROM availabilities WHERE meeting_id=?", (mid,)
+        )
+        assert rows == []
 
     def test_not_found(self, client):
         assert client.delete("/api/meetings/notexist").status_code == 404
@@ -310,6 +329,9 @@ class TestSubmitAvailability:
             "member_name": "Alice", "slots": {"2025-01-06": [10.0]},
         })
         assert resp.status_code == 200
+        detail = client.get(f"/api/meetings/{mid}").json()
+        alice = next(a for a in detail["availabilities"] if a["member_name"] == "Alice")
+        assert alice["slots"] == {"2025-01-06": [10.0]}
 
     def test_empty_name_returns_400(self, client):
         mid = _create_meeting(client)
@@ -354,7 +376,7 @@ class TestCommonSlots:
         })
         data = client.get(f"/api/meetings/{mid}/common").json()
         assert data["member_count"] == 1
-        assert "2025-01-06" in data["common_slots"]
+        assert sorted(data["common_slots"]["2025-01-06"]) == [9.0, 9.5]
 
     def test_two_members_with_overlap(self, client):
         mid = _create_meeting(client)
@@ -480,6 +502,9 @@ class TestUpdateGroup:
         })
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
+        updated = next(g for g in client.get("/api/groups").json() if g["id"] == gid)
+        assert updated["name"] == "팀B"
+        assert updated["members"] == ["A", "B", "C"]
 
     def test_empty_name_returns_400(self, client):
         gid = _create_group(client)
@@ -530,6 +555,7 @@ class TestDeleteGroup:
         resp = client.post(f"/api/groups/{gid}/delete", json={"password": "1234"})
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok"}
+        assert all(g["id"] != gid for g in client.get("/api/groups").json())
 
     def test_not_found_returns_404(self, client):
         resp = client.post("/api/groups/99999/delete", json={"password": "1234"})
