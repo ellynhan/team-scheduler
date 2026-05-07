@@ -6,13 +6,13 @@ import { loadMeeting } from "./meeting-view.js";
 export function initTimeSelects() {
   const fromSel = document.getElementById("time-from");
   const toSel = document.getElementById("time-to");
-  for (let h = 0; h < 24; h++) {
+  for (let h = 0; h <= 24; h++) {
     const label = `${String(h).padStart(2, "0")}:00`;
     fromSel.add(new Option(label, h));
     toSel.add(new Option(label, h));
   }
-  fromSel.value = 9;
-  toSel.value = 18;
+  fromSel.value = 0;
+  toSel.value = 24;
 }
 
 export function initDateDefaults() {

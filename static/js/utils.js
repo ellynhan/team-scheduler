@@ -46,10 +46,8 @@ export function getDatesBetween(start, end) {
   return dates;
 }
 
-export function getTimeRange(dateStr) {
-  const day = new Date(dateStr + "T00:00:00").getDay();
-  const isWeekend = day === 0 || day === 6;
-  return { from: isWeekend ? 10 : 16, to: 24 };
+export function getTimeRange(from, to) {
+  return { from, to };
 }
 
 export function highlightMatch(text, query) {
