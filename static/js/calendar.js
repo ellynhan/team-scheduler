@@ -143,13 +143,10 @@ export function showTimeBar() {
   }
   area.style.display = "block";
   const dates = getDatesBetween(rangeMin, rangeMax);
-  let barFrom = 24,
-    barTo = 0;
-  for (const d of dates) {
-    const { from, to } = getTimeRange(d);
-    if (from < barFrom) barFrom = from;
-    if (to > barTo) barTo = to;
-  }
+  const { from: barFrom, to: barTo } = getTimeRange(
+    state.meetingData.time_from,
+    state.meetingData.time_to,
+  );
   const label = document.getElementById("selected-date-label");
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
   if (rangeMin === rangeMax) {
@@ -280,7 +277,10 @@ export function applyTimeSelection() {
   const dates = getDatesBetween(rangeMin, rangeMax);
   for (const date of dates) {
     if (!state.selectedSlots[date]) state.selectedSlots[date] = [];
-    const { from, to } = getTimeRange(date);
+    const { from, to } = getTimeRange(
+      state.meetingData.time_from,
+      state.meetingData.time_to,
+    );
     if (state.timeSelMode === "remove") {
       state.selectedSlots[date] = state.selectedSlots[date].filter(
         (s) => s < min || s > max || s < from || s >= to,
@@ -318,7 +318,10 @@ export function selectAllTimes() {
   if (!rangeMin) return;
   const dates = getDatesBetween(rangeMin, rangeMax);
   for (const d of dates) {
-    const { from, to } = getTimeRange(d);
+    const { from, to } = getTimeRange(
+      state.meetingData.time_from,
+      state.meetingData.time_to,
+    );
     state.selectedSlots[d] = [];
     for (let s = from; s < to; s += 0.5) {
       state.selectedSlots[d].push(s);
